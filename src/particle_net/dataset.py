@@ -1,12 +1,20 @@
 import numpy as np
+from src.utils import load_from_files
 
 
-class Dataset(object):
+class PointDataset(object):
     def __init__(
         self,
         data,
         labels,
+        max_jets: int = 500,
+        max_constits: int = 80,
+        use_train_weights: bool = True,
     ):
+        data, labels, _, _, _ = load_from_files(
+            [], max_jets=max_jets, max_constits=max_constits, use_train_weights=False
+        )
+
         self.label = "label"
         self._values = {}
         self._values["features"] = data
