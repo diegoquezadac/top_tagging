@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
@@ -11,6 +12,21 @@ import matplotlib.pyplot as plt
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader, random_split
+
+# Configurar el formateador
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Configurar el logger
+logger = logging.getLogger("BNN")
+logger.setLevel(logging.INFO)
+
+# Agregar handler para consola
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 
 def train_one_epoch(model, loader, criterion, optimizer, device, l1_lambda):
@@ -45,44 +61,64 @@ def validate(model, loader, criterion, device):
     return running_loss / len(loader.dataset), accuracy
 
 
+def get_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
+
+
 if __name__ == "__main__":
     # Define variables
     epochs = 100
-    lr = 1e-2 # 1.2 * 1e-5
+    lr = 1e-2  # 1.2 * 1e-5
     batch_size = 256
     val_split = 0.2
     l1_lambda = 2e-4
 
-    # Define datasets
-    dataset = TabularDataset("./data/test-public-small.h5")
+    max_constits = 80
+    num_workers = 4
+
+    logger.info("Defining dataset")
+    dataset = TabularDataset("./data/train-preprocessed.h5", max_constits=max_constits)
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
 
-    # Define data loader
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size)
+    logger.info("Defining dataloaders")
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+    )
 
-    # Define model
-    n_features = dataset.X.shape[1]
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=batch_size,
+    )
+
+    logger.info("Preparing training")
+    n_features = max_constits * 7
     model = BNN(n_features)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+    device = get_device()
+    logger.info(f"Moving model to device {device}")
     model.to(device)
 
-    # Define stuff
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    # checkpoint directory
     checkpoint_dir = Path.cwd() / "checkpoints/bnn"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    # store history like keras
     history = {"train_loss": [], "val_loss": [], "val_acc": []}
 
     best_val_loss = float("inf")
 
-    # Train model
+    logger.info("Starting epochs")
+
     for epoch in range(1, epochs + 1):
         train_loss = train_one_epoch(
             model, train_loader, criterion, optimizer, device, l1_lambda
@@ -95,7 +131,7 @@ if __name__ == "__main__":
         history["val_acc"].append(val_acc)
 
         # print progress
-        print(
+        logger.info(
             f"Epoch {epoch}/{epochs} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f} - Val Acc: {val_acc:.4f}"
         )
 
@@ -112,7 +148,7 @@ if __name__ == "__main__":
                 },
                 checkpoint_path,
             )
-            print(f"✅ Saved checkpoint: {checkpoint_path}")
+            logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
 
         # --- Plot training curves ---
         plt.plot(history["train_loss"], label="Training")
