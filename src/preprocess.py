@@ -1,14 +1,29 @@
 import h5py
+import logging
+import argparse
+import warnings
 import numpy as np
+warnings.filterwarnings("ignore")
 
-def compute_stats(file_path, max_constits=80):
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+logger = logging.getLogger("preprocessing")
+logger.setLevel(logging.INFO)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+def compute_stats(input_path, max_constits=80):
     """Compute dataset-level sums for fjet_clus_pt and fjet_clus_E, ignoring padded constituents."""
     sum_pt = 0.0
     sum_energy = 0.0
     batch_size = 100_000
     data_vector_names = ["fjet_clus_pt", "fjet_clus_E"]
     
-    with h5py.File(file_path, 'r', swmr=True) as h5file:
+    with h5py.File(input_path, 'r', swmr=True) as h5file:
         num_samples = len(h5file['labels'])
         
         for start in range(0, num_samples, batch_size):
@@ -87,15 +102,42 @@ def constituent(data_dict, max_constits=80, sum_pt_global=None, sum_energy_globa
 
     return stacked_data
 
-def preprocess(file_path, output_path, max_constits=80, batch_size=500000, use_train_weights=False):
+def build_jet_images(jet_data):
+    nbins = 64
+    eta_range = (-2, 2)
+    phi_range = (-2, 2)
+
+    images = []
+    for jet in jet_data:
+        etas = jet[:, 0]
+        phis = jet[:, 1]
+        pts = np.exp(jet[:, 2])
+
+        image, _, _ = np.histogram2d(
+            etas, phis, bins=nbins, range=[eta_range, phi_range], weights=pts
+        )
+
+        total = image.sum()
+        if total > 0:
+            image /= total
+
+        image = np.log1p(100 * image)
+
+        images.append(image)
+
+    images = np.array(images)
+
+    return images
+
+def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use_train_weights=True):
     """Create a preprocessed HDF5 file with globally normalized pt and energy features."""
     data_vector_names = ['fjet_clus_pt', 'fjet_clus_eta', 'fjet_clus_phi', 'fjet_clus_E']
     
     # First pass: Compute dataset-level sums
-    sum_pt_global, sum_energy_global = compute_stats(file_path, max_constits)
+    sum_pt_global, sum_energy_global = compute_stats(input_path, max_constits)
     
     # Second pass: Preprocess and write in batches
-    with h5py.File(file_path, 'r', swmr=True) as input_file:
+    with h5py.File(input_path, 'r', swmr=True) as input_file:
         num_samples = len(input_file['labels'])
         
         with h5py.File(output_path, 'w') as output_file:
@@ -104,8 +146,12 @@ def preprocess(file_path, output_path, max_constits=80, batch_size=500000, use_t
             labels_ds = output_file.create_dataset('labels', shape=(num_samples,), dtype=input_file['labels'].dtype)
             if use_train_weights:
                 weights_ds = output_file.create_dataset('weights', shape=(num_samples,), dtype=input_file['weights'].dtype)
+            nbins = 64  # From build_jet_images
+            images_ds = output_file.create_dataset('images', shape=(num_samples, nbins, nbins), dtype=np.float32)
             
             for start in range(0, num_samples, batch_size):
+
+                logger.info(f"Preprocessing batch {start//batch_size} / {1 + num_samples//batch_size}")
                 end = min(start + batch_size, num_samples)
                 data_dict = {key: input_file[key][start:end] for key in data_vector_names}
 
@@ -119,3 +165,24 @@ def preprocess(file_path, output_path, max_constits=80, batch_size=500000, use_t
                 labels_ds[start:end] = input_file['labels'][start:end]
                 if use_train_weights:
                     weights_ds[start:end] = input_file['weights'][start:end]
+                images = build_jet_images(processed_data)
+                images_ds[start:end] = images
+
+if __name__ == "__main__":
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Preprocess Atlas Top Tagging Open Data Set")
+    parser.add_argument("input_path", type=str, help="Path to the input file")
+    parser.add_argument("output_path", type=str, help="Path to save the output file")
+    parser.add_argument("--max-constits", type=int, default=80, help="Maximum number of constituents (default: 80)")
+    parser.add_argument("--batch-size", type=int, default=100_000, help="Batch size for processing (default: 500000)")
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Call preprocess function with command-line arguments
+    preprocess(
+        input_path=args.input_path,
+        output_path=args.output_path,
+        max_constits=args.max_constits,
+        batch_size=args.batch_size,
+    )

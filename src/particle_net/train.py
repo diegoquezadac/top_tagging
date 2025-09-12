@@ -45,7 +45,7 @@ if __name__ == "__main__":
     )
 
     # Train model
-    save_dir = "model_checkpoints"
+    save_dir = "checkpoints/particle_net"
     model_name = f"{model_type}_model.{{epoch:03d}}.h5"
     os.makedirs(save_dir, exist_ok=True)
     filepath = os.path.join(save_dir, model_name)

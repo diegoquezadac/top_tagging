@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader, random_split
+from src.utils import train_loop, test_loop, get_device
 
 # Configurar el formateador
 formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 # Configurar el logger
@@ -29,60 +29,24 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-def train_one_epoch(model, loader, criterion, optimizer, device, l1_lambda):
-    model.train()
-    running_loss = 0
-    for imgs, labels in loader:
-        imgs, labels = imgs.to(device), labels.to(device).float()
-        optimizer.zero_grad()
-        outputs = model(imgs).squeeze(1)
-        loss = criterion(outputs, labels)
-        l1_reg = sum(torch.sum(torch.abs(p)) for p in model.parameters() if p.dim() > 1)
-        loss = loss + l1_lambda * l1_reg
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item() * imgs.size(0)
-    return running_loss / len(loader.dataset)
-
-
-def validate(model, loader, criterion, device):
-    model.eval()
-    running_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for imgs, labels in loader:
-            imgs, labels = imgs.to(device), labels.to(device).float()
-            outputs = model(imgs).squeeze(1)
-            loss = criterion(outputs, labels)
-            running_loss += loss.item() * imgs.size(0)
-            preds = (torch.sigmoid(outputs) > 0.5).long()
-            correct += (preds == labels.long()).sum().item()
-    accuracy = correct / len(loader.dataset)
-    return running_loss / len(loader.dataset), accuracy
-
-
-def get_device():
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        return torch.device("mps")
-    else:
-        return torch.device("cpu")
-
 
 if __name__ == "__main__":
     # Define variables
     epochs = 100
-    lr = 1e-2  # 1.2 * 1e-5
+    lr = 1.2 * 1e-5
     batch_size = 256
     val_split = 0.2
     l1_lambda = 2e-4
 
     max_constits = 80
-    num_workers = 4
+    num_workers = 10
 
     logger.info("Defining dataset")
-    dataset = TabularDataset("./data/train-preprocessed.h5", max_constits=max_constits)
+    dataset = TabularDataset(
+        "./data/train-preprocessed.h5",
+        max_constits=max_constits,
+        use_train_weights=True,
+    )
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
@@ -91,23 +55,30 @@ if __name__ == "__main__":
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=2,
     )
 
     val_loader = DataLoader(
         val_ds,
         batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True,
     )
 
     logger.info("Preparing training")
     n_features = max_constits * 7
     model = BNN(n_features)
 
-
     device = get_device()
     logger.info(f"Moving model to device {device}")
     model.to(device)
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     checkpoint_dir = Path.cwd() / "checkpoints/bnn"
@@ -120,10 +91,10 @@ if __name__ == "__main__":
     logger.info("Starting epochs")
 
     for epoch in range(1, epochs + 1):
-        train_loss = train_one_epoch(
-            model, train_loader, criterion, optimizer, device, l1_lambda
+        train_loss = train_loop(
+            model, train_loader, criterion, optimizer, device, l1_lambda=l1_lambda
         )
-        val_loss, val_acc = validate(model, val_loader, criterion, device)
+        val_loss, val_acc = test_loop(model, val_loader, criterion, device)
 
         # save metrics
         history["train_loss"].append(train_loss)
