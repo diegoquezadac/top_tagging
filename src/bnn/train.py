@@ -1,6 +1,6 @@
-import sys
 import os
-import logging
+import sys
+import argparse
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
@@ -12,26 +12,13 @@ import matplotlib.pyplot as plt
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader, random_split
-from src.utils import train_loop, test_loop, get_device
+from src.utils import train_loop, test_loop, get_device, get_logger
 
-# Configurar el formateador
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
-
-# Configurar el logger
-logger = logging.getLogger("BNN")
-logger.setLevel(logging.INFO)
-
-# Agregar handler para consola
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
+logger = get_logger("bnn_training")
 
 
 if __name__ == "__main__":
-    # Define variables
+
     epochs = 100
     lr = 1.2 * 1e-5
     batch_size = 256
@@ -41,9 +28,13 @@ if __name__ == "__main__":
     max_constits = 80
     num_workers = 10
 
+    parser = argparse.ArgumentParser(description="BNN Model training")
+    parser.add_argument("input_path", type=str, default="./data/train-preprocessed.h5", help="Path to the training file")
+    args = parser.parse_args()
+
     logger.info("Defining dataset")
     dataset = TabularDataset(
-        "./data/train-preprocessed.h5",
+        args.input_path,
         max_constits=max_constits,
         use_train_weights=True,
     )
