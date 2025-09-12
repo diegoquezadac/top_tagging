@@ -109,7 +109,7 @@ if __name__ == "__main__":
         # save checkpoint if best
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            checkpoint_path = checkpoint_dir / f"epoch{epoch:02d}-val{val_loss:.4f}.pt"
+            checkpoint_path = checkpoint_dir / "best_model.pt"
             torch.save(
                 {
                     "epoch": epoch,
