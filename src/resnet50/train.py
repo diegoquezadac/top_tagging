@@ -1,9 +1,12 @@
-import sys
 import os
+import sys
+import argparse
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import torch
+import random
+import numpy as np
 import torch.nn as nn
 from pathlib import Path
 import torch.optim as optim
@@ -12,57 +15,97 @@ import matplotlib.pyplot as plt
 from src.resnet50.dataset import ImageDataset
 from src.resnet50.model import ResNet, Bottleneck
 from torch.utils.data import DataLoader, random_split
-from src.utils import train_loop, test_loop, get_device
+from src.utils import train_loop, test_loop, get_device, get_logger
 
+SEED = 21
+logger = get_logger("resnet50_training")
 
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
 
 if __name__ == "__main__":
-    # TODO: Use logging instead of print
-    # TODO: Probably move data to device
-    # TODO: Check hyperparameters from paper
-
-    # Define variables
     epochs = 100
     lr = 1e-2
-    batch_size = 256
+    batch_size = 250
     dropout_p = 0.5
     val_split = 0.2
-    max_jets = 500
 
-    dataset = ImageDataset("./data/train-preprocessed.h5", use_train_weights=True)
+    max_constits = 80
+    num_workers = 10
+
+    parser = argparse.ArgumentParser(description="ResNet50 model training")
+    parser.add_argument(
+        "input_path",
+        type=str,
+        default="./data/train-preprocessed.h5",
+        help="Path to the training file",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume training from the best_model.pt checkpoint",
+    )
+    args = parser.parse_args()
+
+    logger.info("Defining datasets")
+    dataset = ImageDataset(args.input_path, use_train_weights=True)
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size)
 
-    # Define model
+    logger.info("Defining dataloaders")
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=2,
+    )
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True,
+    )
+
     device = get_device()
-
-    use_resnet50 = False
-    if use_resnet50:  # NOTE: Gigantic model ... Not used for jet tagging
-        model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
-        model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        model.fc = nn.Sequential(
-            nn.Dropout(dropout_p), nn.Linear(model.fc.in_features, 1)
-        )
-    else:
-        model = ResNet(Bottleneck, [3, 4, 6, 3], dropout_p=dropout_p)
-
+    model = ResNet(Bottleneck, [3, 4, 6, 3], dropout_p=dropout_p)
     model.to(device)
 
-    # Train model
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    # checkpoint directory
     checkpoint_dir = Path.cwd() / "checkpoints/resnet50"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_path = checkpoint_dir / "best_model.pt"
 
     # store history like keras
     history = {"train_loss": [], "val_loss": [], "val_acc": []}
-
     best_val_loss = float("inf")
+    start_epoch = 1
+
+    if args.resume:
+        if checkpoint_path.exists():
+            logger.info(f"Loading checkpoint from {checkpoint_path}")
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            model.load_state_dict(checkpoint["model_state"])
+            optimizer.load_state_dict(checkpoint["optimizer_state"])
+            start_epoch = checkpoint["epoch"] + 1
+            best_val_loss = checkpoint["val_loss"]
+            history = checkpoint.get("history", history)
+            if checkpoint["max_constits"] != max_constits or checkpoint["val_split"] != val_split:
+                logger.warning("Dataset parameters have changed since checkpoint!")
+            logger.info(
+                f"Resuming training from epoch {start_epoch} with best val loss {best_val_loss:.4f}"
+            )
+        else:
+            logger.error(f"Checkpoint file {checkpoint_path} not found!")
+            sys.exit(1)
 
     for epoch in range(1, epochs + 1):
         train_loss = train_loop(model, train_loader, criterion, optimizer, device)
@@ -74,27 +117,31 @@ if __name__ == "__main__":
         history["val_acc"].append(val_acc)
 
         # print progress
-        print(
+        logger.info(
             f"Epoch {epoch}/{epochs} - "
             f"Train Loss: {train_loss:.4f} - "
             f"Val Loss: {val_loss:.4f} - "
             f"Val Acc: {val_acc:.4f}"
         )
 
-        # save checkpoint if best
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            checkpoint_path = checkpoint_dir / f"epoch{epoch:02d}-val{val_loss:.4f}.pt"
+            checkpoint_path = checkpoint_dir / "best_model.pt"
             torch.save(
                 {
                     "epoch": epoch,
                     "model_state": model.state_dict(),
                     "optimizer_state": optimizer.state_dict(),
                     "val_loss": val_loss,
-                },
+                    "history": history,
+                    "max_constits": max_constits,  # Save dataset parameters
+                    "val_split": val_split,
+                    "input_path": args.input_path,
+                    "lr": optimizer.param_groups[0]["lr"],  # Save current learning rate
+                    },
                 checkpoint_path,
             )
-            print(f"✅ Saved checkpoint: {checkpoint_path}")
+            logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
 
     # --- Plot training curves ---
     plt.plot(history["train_loss"], label="Training")

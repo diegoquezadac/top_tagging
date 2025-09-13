@@ -5,6 +5,8 @@ import argparse
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import torch
+import random
+import numpy as np
 import torch.nn as nn
 from pathlib import Path
 import torch.optim as optim
@@ -14,25 +16,40 @@ from src.bnn.model import BNN
 from torch.utils.data import DataLoader, random_split
 from src.utils import train_loop, test_loop, get_device, get_logger
 
+SEED = 21
 logger = get_logger("bnn_training")
+
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
 
 
 if __name__ == "__main__":
-
     epochs = 100
     lr = 1.2 * 1e-5
-    batch_size = 256
+    batch_size = 250
     val_split = 0.2
     l1_lambda = 2e-4
 
     max_constits = 80
     num_workers = 10
 
-    parser = argparse.ArgumentParser(description="BNN Model training")
-    parser.add_argument("input_path", type=str, default="./data/train-preprocessed.h5", help="Path to the training file")
+    parser = argparse.ArgumentParser(description="BNN model training")
+    parser.add_argument(
+        "input_path",
+        type=str,
+        default="./data/train-preprocessed.h5",
+        help="Path to the training file",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume training from the best_model.pt checkpoint",
+    )
     args = parser.parse_args()
 
-    logger.info("Defining dataset")
+    logger.info("Defining datasets")
     dataset = TabularDataset(
         args.input_path,
         max_constits=max_constits,
@@ -74,10 +91,29 @@ if __name__ == "__main__":
 
     checkpoint_dir = Path.cwd() / "checkpoints/bnn"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_path = checkpoint_dir / "best_model.pt"
 
     history = {"train_loss": [], "val_loss": [], "val_acc": []}
-
     best_val_loss = float("inf")
+    start_epoch = 1
+
+    if args.resume:
+        if checkpoint_path.exists():
+            logger.info(f"Loading checkpoint from {checkpoint_path}")
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            model.load_state_dict(checkpoint["model_state"])
+            optimizer.load_state_dict(checkpoint["optimizer_state"])
+            start_epoch = checkpoint["epoch"] + 1
+            best_val_loss = checkpoint["val_loss"]
+            history = checkpoint.get("history", history)
+            if checkpoint["max_constits"] != max_constits or checkpoint["val_split"] != val_split:
+                logger.warning("Dataset parameters have changed since checkpoint!")
+            logger.info(
+                f"Resuming training from epoch {start_epoch} with best val loss {best_val_loss:.4f}"
+            )
+        else:
+            logger.error(f"Checkpoint file {checkpoint_path} not found!")
+            sys.exit(1)
 
     logger.info("Starting epochs")
 
@@ -107,7 +143,12 @@ if __name__ == "__main__":
                     "model_state": model.state_dict(),
                     "optimizer_state": optimizer.state_dict(),
                     "val_loss": val_loss,
-                },
+                    "history": history,
+                    "max_constits": max_constits,  # Save dataset parameters
+                    "val_split": val_split,
+                    "input_path": args.input_path,
+                    "lr": optimizer.param_groups[0]["lr"],  # Save current learning rate
+                    },
                 checkpoint_path,
             )
             logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
