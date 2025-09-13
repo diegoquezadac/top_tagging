@@ -16,6 +16,33 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+def build_jet_images(jets):
+    nbins = 64
+    eta_range = (-2, 2)
+    phi_range = (-2, 2)
+
+    images = []
+    for jet in jets:
+        etas = jet[:, 0]
+        phis = jet[:, 1]
+        pts = np.exp(jet[:, 2])
+
+        image, _, _ = np.histogram2d(
+            etas, phis, bins=nbins, range=[eta_range, phi_range], weights=pts
+        )
+
+        total = image.sum()
+        if total > 0:
+            image /= total
+
+        image = np.log1p(100 * image)
+
+        images.append(image)
+
+    images = np.array(images)
+
+    return images
+
 def compute_stats(input_path, max_constits=80):
     """Compute dataset-level sums for fjet_clus_pt and fjet_clus_E, ignoring padded constituents."""
     sum_pt = 0.0
@@ -102,33 +129,6 @@ def constituent(data_dict, max_constits=80, sum_pt_global=None, sum_energy_globa
 
     return stacked_data
 
-def build_jet_images(jet_data):
-    nbins = 64
-    eta_range = (-2, 2)
-    phi_range = (-2, 2)
-
-    images = []
-    for jet in jet_data:
-        etas = jet[:, 0]
-        phis = jet[:, 1]
-        pts = np.exp(jet[:, 2])
-
-        image, _, _ = np.histogram2d(
-            etas, phis, bins=nbins, range=[eta_range, phi_range], weights=pts
-        )
-
-        total = image.sum()
-        if total > 0:
-            image /= total
-
-        image = np.log1p(100 * image)
-
-        images.append(image)
-
-    images = np.array(images)
-
-    return images
-
 def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use_train_weights=True):
     """Create a preprocessed HDF5 file with globally normalized pt and energy features."""
     data_vector_names = ['fjet_clus_pt', 'fjet_clus_eta', 'fjet_clus_phi', 'fjet_clus_E']
@@ -146,8 +146,8 @@ def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use
             labels_ds = output_file.create_dataset('labels', shape=(num_samples,), dtype=input_file['labels'].dtype)
             if use_train_weights:
                 weights_ds = output_file.create_dataset('weights', shape=(num_samples,), dtype=input_file['weights'].dtype)
-            nbins = 64  # From build_jet_images
-            images_ds = output_file.create_dataset('images', shape=(num_samples, nbins, nbins), dtype=np.float32)
+            # nbins = 64  # From build_jet_images
+            # images_ds = output_file.create_dataset('images', shape=(num_samples, nbins, nbins), dtype=np.float32)
             
             for start in range(0, num_samples, batch_size):
 
@@ -155,7 +155,6 @@ def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use
                 end = min(start + batch_size, num_samples)
                 data_dict = {key: input_file[key][start:end] for key in data_vector_names}
 
-                
                 # Apply preprocessing with global normalization
                 processed_data = constituent(data_dict, max_constits, 
                                           sum_pt_global=sum_pt_global, 
@@ -165,8 +164,8 @@ def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use
                 labels_ds[start:end] = input_file['labels'][start:end]
                 if use_train_weights:
                     weights_ds[start:end] = input_file['weights'][start:end]
-                images = build_jet_images(processed_data)
-                images_ds[start:end] = images
+                # images = build_jet_images(processed_data)
+                # images_ds[start:end] = images
 
 if __name__ == "__main__":
     # Set up argument parser
