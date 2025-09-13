@@ -33,7 +33,6 @@ if __name__ == "__main__":
     l1_lambda = 2e-4
 
     max_constits = 80
-    num_workers = 10
 
     parser = argparse.ArgumentParser(description="BNN model training")
     parser.add_argument(
@@ -47,6 +46,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Resume training from the best_model.pt checkpoint",
     )
+
+    parser.add_argument("--num-workers", type=int, default=10, help="Number of workers")
+
     args = parser.parse_args()
 
     logger.info("Defining datasets")
@@ -59,12 +61,12 @@ if __name__ == "__main__":
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
 
-    logger.info("Defining dataloaders")
+    logger.info(f"Defining dataloaders with {args.num_workers} workers")
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
+        num_workers=args.num_workers,
         pin_memory=True,
         persistent_workers=True,
         prefetch_factor=2,
@@ -73,7 +75,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(
         val_ds,
         batch_size=batch_size,
-        num_workers=num_workers,
+        num_workers=args.num_workers,
         pin_memory=True,
         persistent_workers=True,
     )
@@ -100,13 +102,18 @@ if __name__ == "__main__":
     if args.resume:
         if checkpoint_path.exists():
             logger.info(f"Loading checkpoint from {checkpoint_path}")
-            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            checkpoint = torch.load(
+                checkpoint_path, map_location=device, weights_only=False
+            )
             model.load_state_dict(checkpoint["model_state"])
             optimizer.load_state_dict(checkpoint["optimizer_state"])
             start_epoch = checkpoint["epoch"] + 1
             best_val_loss = checkpoint["val_loss"]
             history = checkpoint.get("history", history)
-            if checkpoint["max_constits"] != max_constits or checkpoint["val_split"] != val_split:
+            if (
+                checkpoint["max_constits"] != max_constits
+                or checkpoint["val_split"] != val_split
+            ):
                 logger.warning("Dataset parameters have changed since checkpoint!")
             logger.info(
                 f"Resuming training from epoch {start_epoch} with best val loss {best_val_loss:.4f}"
@@ -148,7 +155,7 @@ if __name__ == "__main__":
                     "val_split": val_split,
                     "input_path": args.input_path,
                     "lr": optimizer.param_groups[0]["lr"],  # Save current learning rate
-                    },
+                },
                 checkpoint_path,
             )
             logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
