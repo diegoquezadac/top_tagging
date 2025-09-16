@@ -10,6 +10,12 @@ source .venv/bin/activate
 uv sync
 ```
 
+Additionally, considering the available hardware either install tensorflow-metal or tensorflow gpu:
+
+```bash
+uv add tensorflow-metal
+```
+
 ## Data gathering
 
 Download the datasets from [OpenData](https://opendata.cern.ch/record/15013).
@@ -19,6 +25,8 @@ Download the datasets from [OpenData](https://opendata.cern.ch/record/15013).
 Activate the python environment and run the following commands:
 
 ```bash
+python src/preprocess.py /home/raquel/data/test-public.h5 ./data/test-preprocessed.h5
+
 python src/preprocess.py data/train-public.h5 data/train-preprocessed.h5
 
 python src/preprocess.py data/test-public.h5 data/test-preprocessed.h5
