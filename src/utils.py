@@ -68,3 +68,7 @@ def get_logger(name: str):
     logger.addHandler(console_handler)
 
     return logger
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
