@@ -25,14 +25,12 @@ Download the datasets from [OpenData](https://opendata.cern.ch/record/15013).
 Activate the python environment and run the following commands:
 
 ```bash
-python src/preprocess.py /home/raquel/data/test-public.h5 ./data/test-preprocessed.h5
-
 python src/preprocess.py data/train-public.h5 data/train-preprocessed.h5
 
 python src/preprocess.py data/test-public.h5 data/test-preprocessed.h5
 ```
 
-> TODO: Add warning about time and space.
+> Notice that the structure is src/preprocess.py path_to_input_data path_to_output_data
 
 ## Training
 
