@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader, random_split
-from src.utils import train_loop, test_loop, get_device, get_logger
+from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters
 
 SEED = 21
 logger = get_logger("bnn_training")
@@ -83,6 +83,7 @@ if __name__ == "__main__":
     logger.info("Preparing training")
     n_features = max_constits * 7
     model = BNN(n_features)
+    logger.info(f"Total trainable parameters: {count_parameters(model)}")
 
     device = get_device()
     logger.info(f"Moving model to device {device}")
