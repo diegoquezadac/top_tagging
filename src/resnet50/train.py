@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from src.resnet50.dataset import ImageDataset
 from src.resnet50.model import ResNet, Bottleneck
 from torch.utils.data import DataLoader, random_split
-from src.utils import train_loop, test_loop, get_device, get_logger
+from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters
 
 SEED = 21
 logger = get_logger("resnet50_training")
@@ -27,12 +27,14 @@ torch.cuda.manual_seed_all(SEED)
 if __name__ == "__main__":
     epochs = 100
     lr = 1e-2
-    batch_size = 250
+    batch_size = 256
     dropout_p = 0.5
     val_split = 0.2
 
+    max_jets = 10000
     max_constits = 80
     num_workers = 10
+
 
     parser = argparse.ArgumentParser(description="ResNet50 model training")
     parser.add_argument(
@@ -51,7 +53,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Defining datasets")
-    dataset = ImageDataset(args.input_path, use_train_weights=True)
+    dataset = ImageDataset(args.input_path, use_train_weights=True, max_jets=max_jets)
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
@@ -75,10 +77,11 @@ if __name__ == "__main__":
     )
 
     device = get_device()
-    model = ResNet(Bottleneck, [3, 4, 6, 3], dropout_p=dropout_p)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], dropout_p=dropout_p) # , num_classes=2)
+    logger.info(f"Total trainable parameters: {count_parameters(model)}")
     model.to(device)
 
-    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    criterion = nn.CrossEntropyLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     checkpoint_dir = Path.cwd() / "checkpoints/resnet50"
