@@ -15,6 +15,7 @@ from src.resnet50.dataset import ImageDataset
 from src.resnet50.model import ResNet, Bottleneck
 from torch.utils.data import DataLoader, random_split
 from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters
+from torch.optim.lr_scheduler import StepLR, LambdaLR
 
 SEED = 21
 logger = get_logger("resnet50_training")
@@ -83,6 +84,8 @@ if __name__ == "__main__":
 
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+    #scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.9 ** (epoch // 10))
 
     checkpoint_dir = Path.cwd() / "checkpoints/resnet50"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -101,6 +104,7 @@ if __name__ == "__main__":
             )
             model.load_state_dict(checkpoint["model_state"])
             optimizer.load_state_dict(checkpoint["optimizer_state"])
+            scheduler.load_state_dict(checkpoint.get("scheduler_state", scheduler.state_dict()))
             start_epoch = checkpoint["epoch"] + 1
             best_val_loss = checkpoint["val_loss"]
             history = checkpoint.get("history", history)
@@ -119,6 +123,7 @@ if __name__ == "__main__":
     for epoch in range(1, epochs + 1):
         train_loss = train_loop(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = test_loop(model, val_loader, criterion, device)
+        scheduler.step()
 
         # save metrics
         history["train_loss"].append(train_loss)
@@ -130,7 +135,8 @@ if __name__ == "__main__":
             f"Epoch {epoch}/{epochs} - "
             f"Train Loss: {train_loss:.4f} - "
             f"Val Loss: {val_loss:.4f} - "
-            f"Val Acc: {val_acc:.4f}"
+            f"Val Acc: {val_acc:.4f} - "
+            f"Learning Rate: {scheduler.get_last_lr()[0]:.6f}"
         )
 
         if val_loss < best_val_loss:
@@ -141,12 +147,13 @@ if __name__ == "__main__":
                     "epoch": epoch,
                     "model_state": model.state_dict(),
                     "optimizer_state": optimizer.state_dict(),
+                    "scheduler_state": scheduler.state_dict(),
                     "val_loss": val_loss,
                     "history": history,
                     "max_constits": max_constits,  # Save dataset parameters
                     "val_split": val_split,
                     "input_path": args.input_path,
-                    "lr": optimizer.param_groups[0]["lr"],  # Save current learning rate
+                    "lr": scheduler.get_last_lr()[0],  # Save current learning rate
                 },
                 checkpoint_path,
             )
