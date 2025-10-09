@@ -1,5 +1,6 @@
 import torch
 import logging
+import numpy as np
 
 
 def train_loop(model, loader, criterion, optimizer, device, l1_lambda=None):
@@ -24,7 +25,7 @@ def train_loop(model, loader, criterion, optimizer, device, l1_lambda=None):
 
         weighted_loss.backward()
         optimizer.step()
-        running_loss += weighted_loss.item() * X.size(0)
+        running_loss += weighted_loss.item() # * X.size(0)
 
     return running_loss / len(loader.dataset)
 
@@ -38,7 +39,7 @@ def test_loop(model, loader, criterion, device):
             X, y = X.to(device), y.to(device).float()
             outputs = model(X).squeeze(1)
             loss = criterion(outputs, y).sum()
-            running_loss += loss.item() * X.size(0)
+            running_loss += loss.item() # * X.size(0)
             preds = (torch.sigmoid(outputs) > 0.5).long()
             correct += (preds == y.long()).sum().item()
     accuracy = correct / len(loader.dataset)
