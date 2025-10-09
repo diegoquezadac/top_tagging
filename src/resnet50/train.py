@@ -81,7 +81,7 @@ if __name__ == "__main__":
     logger.info(f"Total trainable parameters: {count_parameters(model)}")
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss(reduction="none")
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     checkpoint_dir = Path.cwd() / "checkpoints/resnet50"
