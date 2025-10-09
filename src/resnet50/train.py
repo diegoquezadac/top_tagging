@@ -152,13 +152,14 @@ if __name__ == "__main__":
             )
             logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
 
-    # --- Plot training curves ---
-    plt.plot(history["train_loss"], label="Training")
-    plt.plot(history["val_loss"], label="Validation")
-    plt.ylabel("Cross-entropy Loss")
-    plt.xlabel("Training Epoch")
-    plt.legend()
-    figure_dir = Path.cwd() / "figures"
-    figure_dir.mkdir(parents=True, exist_ok=True)
-    plt.savefig(figure_dir / "loss_resnet50.png", dpi=300)
-    plt.clf()
+        # --- Plot training curves ---
+        plt.plot(history["train_loss"], label="Training")
+        plt.plot(history["val_loss"], label="Validation")
+        plt.ylabel("Cross-entropy Loss")
+        plt.xlabel("Training Epoch")
+        plt.ylim(0, 1)
+        plt.legend()
+        figure_dir = Path.cwd() / "figures"
+        figure_dir.mkdir(parents=True, exist_ok=True)
+        plt.savefig(figure_dir / "loss_resnet50.png", dpi=300)
+        plt.clf()
