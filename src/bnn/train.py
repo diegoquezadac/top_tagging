@@ -56,6 +56,7 @@ if __name__ == "__main__":
         args.input_path,
         max_constits=max_constits,
         use_train_weights=True,
+        max_jets=1_000_000,
     )
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
