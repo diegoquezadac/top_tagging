@@ -32,7 +32,7 @@ if __name__ == "__main__":
     dropout_p = 0.5
     val_split = 0.25
 
-    max_jets = 10000
+    max_jets = None
     max_constits = 80
     num_workers = 10
 
