@@ -28,8 +28,8 @@ torch.cuda.manual_seed_all(SEED)
 if __name__ == "__main__":
     epochs = 100
     lr = 1.2 * 1e-5
-    batch_size = 250
-    val_split = 0.2
+    batch_size = 256
+    val_split = 0.25
     l1_lambda = 2e-4
 
     max_constits = 80
@@ -60,6 +60,8 @@ if __name__ == "__main__":
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
+    logger.info(f"Train dataset: {train_size} data points")
+    logger.info(f"Validation dataset: {val_size} data points")
 
     logger.info(f"Defining dataloaders with {args.num_workers} workers")
     train_loader = DataLoader(

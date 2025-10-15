@@ -74,9 +74,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    batch_size = 36
-    num_epochs = 30
-    val_split = 0.2
+    batch_size = 256
+    num_epochs = 100
+    val_split = 0.25
     target_eff = 0.8
     max_constits = 80
     checkpoint_dir = Path("checkpoints/particle_net")
@@ -94,6 +94,8 @@ if __name__ == "__main__":
     train_size = num_samples - val_size
     train_indices = indices[:train_size]
     val_indices = indices[train_size:]
+    logger.info(f"Train dataset: {train_size} data points")
+    logger.info(f"Validation dataset: {val_size} data points")
 
     train_ds = PointDataset(args.input_path, indices=train_indices.tolist(), max_constits=max_constits)
     val_ds = PointDataset(args.input_path, indices=val_indices.tolist(), max_constits=max_constits)

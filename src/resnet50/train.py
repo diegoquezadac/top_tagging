@@ -30,7 +30,7 @@ if __name__ == "__main__":
     lr = 1e-2
     batch_size = 256
     dropout_p = 0.5
-    val_split = 0.2
+    val_split = 0.25
 
     max_jets = 10000
     max_constits = 80
@@ -58,6 +58,8 @@ if __name__ == "__main__":
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
+    logger.info(f"Train dataset: {train_size} data points")
+    logger.info(f"Validation dataset: {val_size} data points")
 
     logger.info(f"Defining dataloaders with {args.num_workers} workers")
     train_loader = DataLoader(
