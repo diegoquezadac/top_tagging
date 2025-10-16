@@ -74,7 +74,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    batch_size = 64
+    batch_size = 128
     num_epochs = 100
     val_split = 0.25
     target_eff = 0.8
