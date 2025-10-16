@@ -84,7 +84,7 @@ if __name__ == "__main__":
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize dataset
-    full_dataset = PointDataset(args.input_path, max_constits=max_constits, max_jets=1000)
+    full_dataset = PointDataset(args.input_path, max_constits=max_constits, max_jets=1_000_000)
     full_dataset.inspect_hdf5()
     num_samples = len(full_dataset)
 
