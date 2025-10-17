@@ -86,8 +86,8 @@ if __name__ == "__main__":
 
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    #scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
-    scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.9 ** (epoch // 10))
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+    #scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.9 ** (epoch // 10))
 
     checkpoint_dir = Path.cwd() / "checkpoints/resnet50"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
