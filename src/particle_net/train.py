@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     batch_size = 64
     num_epochs = 30
-    val_split = 0.25
+    val_split = 0.1
     target_eff = 0.8
     max_jets = 4000000
     max_constits = 80

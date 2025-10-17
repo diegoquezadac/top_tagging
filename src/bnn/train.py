@@ -29,7 +29,7 @@ if __name__ == "__main__":
     epochs = 30
     lr = 1.2 * 1e-5
     batch_size = 256
-    val_split = 0.25
+    val_split = 0.1
     l1_lambda = 2e-4
 
     max_jets = 4000000
