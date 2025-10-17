@@ -26,13 +26,13 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 
 if __name__ == "__main__":
-    epochs = 100
+    epochs = 30
     lr = 1e-2
     batch_size = 256
     dropout_p = 0.5
-    val_split = 0.25
+    val_split = 0.1
 
-    max_jets = 1_000_000
+    max_jets = 4000000
     max_constits = 80
     num_workers = 10
 

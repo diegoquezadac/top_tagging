@@ -26,12 +26,13 @@ torch.cuda.manual_seed_all(SEED)
 
 
 if __name__ == "__main__":
-    epochs = 100
+    epochs = 30
     lr = 1.2 * 1e-5
     batch_size = 256
     val_split = 0.25
     l1_lambda = 2e-4
 
+    max_jets = 4000000
     max_constits = 80
 
     parser = argparse.ArgumentParser(description="BNN model training")
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         args.input_path,
         max_constits=max_constits,
         use_train_weights=True,
-        max_jets=1_000_000,
+        max_jets=max_jets,
     )
     val_size = int(len(dataset) * val_split)
     train_size = len(dataset) - val_size

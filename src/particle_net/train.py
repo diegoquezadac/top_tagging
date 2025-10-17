@@ -74,17 +74,18 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    batch_size = 128
-    num_epochs = 100
+    batch_size = 64
+    num_epochs = 30
     val_split = 0.25
     target_eff = 0.8
+    max_jets = 4000000
     max_constits = 80
     checkpoint_dir = Path("checkpoints/particle_net")
     checkpoint_path = checkpoint_dir
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize dataset
-    full_dataset = PointDataset(args.input_path, max_constits=max_constits, max_jets=1_000_000)
+    full_dataset = PointDataset(args.input_path, max_constits=max_constits, max_jets=max_jets)
     full_dataset.inspect_hdf5()
     num_samples = len(full_dataset)
 
@@ -127,7 +128,7 @@ if __name__ == "__main__":
         saved_val_split = checkpoint_data["val_split"]
         saved_input_path = checkpoint_data["input_path"]
         if saved_max_constits != max_constits or saved_val_split != val_split or saved_input_path != args.input_path:
-            logger.info(f"Warning: Dataset parameters have changed since checkpoint!")
+            logger.info("Warning: Dataset parameters have changed since checkpoint!")
         logger.info(f"Resuming training from epoch {start_epoch} with best val loss {best_val_loss:.4f}")
     elif args.resume:
         logger.info(f"Error: Checkpoint file {checkpoint_path} not found!")
