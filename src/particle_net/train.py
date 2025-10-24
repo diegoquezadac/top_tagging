@@ -64,7 +64,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "input_path",
         type=str,
-        default="./data/test-preprocessed.h5",
+        default="./data/train-preprocessed.h5",
         help="Path to the training file",
     )
     parser.add_argument(
