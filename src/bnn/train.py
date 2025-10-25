@@ -172,6 +172,7 @@ if __name__ == "__main__":
         plt.xlabel("Training Epoch")
         plt.ylim(0, 1)
         plt.legend()
+        plt.grid(True)
         figure_dir = Path.cwd() / "figures"
         figure_dir.mkdir(parents=True, exist_ok=True)
         plt.savefig(figure_dir / "loss_bnn.png", dpi=300)
