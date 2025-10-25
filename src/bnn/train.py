@@ -27,7 +27,7 @@ torch.cuda.manual_seed_all(SEED)
 
 if __name__ == "__main__":
     epochs = 30
-    lr = 1.2 * 1e-5
+    lr = 1.2 * 1e-2
     batch_size = 256
     val_split = 0.1
     l1_lambda = 2e-4
