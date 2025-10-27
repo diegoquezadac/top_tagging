@@ -30,35 +30,6 @@ class WeightedCategoricalCrossentropy(tf.keras.losses.Loss):
             loss = loss * sample_weight
         return tf.reduce_mean(loss)
 
-def compute_br(y_true, y_pred, sample_weight, target_eff=0.8):
-    signal_labels = y_true[:, 0]
-    signal_scores = y_pred[:, 0]
-    sample_weight = sample_weight if sample_weight is not None else np.ones_like(signal_labels)
-
-    # Find threshold for target signal efficiency (TPR)
-    sorted_indices = np.argsort(signal_scores)[::-1]
-    sorted_scores = signal_scores[sorted_indices]
-    sorted_labels = signal_labels[sorted_indices]
-    sorted_weights = sample_weight[sorted_indices]
-    
-    cumsum_signal = np.cumsum(sorted_weights * (sorted_labels == 1))
-    total_signal = np.sum(sorted_weights * (sorted_labels == 1)) + 1e-10
-    tpr_values = cumsum_signal / total_signal
-    
-    idx = np.searchsorted(tpr_values, target_eff, side='left')
-    if idx >= len(tpr_values):
-        idx = len(tpr_values) - 1
-    threshold = sorted_scores[idx]
-
-    # Compute FPR at this threshold
-    predictions = (signal_scores > threshold).astype(np.float32)
-    background_mask = signal_labels == 0
-    fp = np.sum(sample_weight[background_mask & (predictions == 1)])
-    tn = np.sum(sample_weight[background_mask & (predictions == 0)])
-    fpr = fp / (fp + tn + 1e-10)
-    
-    return 1 / fpr, threshold
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ParticleNet model training")
     parser.add_argument(
@@ -170,7 +141,6 @@ if __name__ == "__main__":
         train_labels = np.concatenate(train_labels, axis=0)
         train_preds = np.concatenate(train_preds, axis=0)
         train_weights = np.concatenate(train_weights, axis=0)
-        train_br, train_threshold = compute_br(train_labels, train_preds, train_weights, target_eff=target_eff)
 
         val_loss = 0.0
         val_batches = 0
@@ -200,18 +170,13 @@ if __name__ == "__main__":
         val_labels = np.concatenate(val_labels, axis=0)
         val_preds = np.concatenate(val_preds, axis=0)
         val_weights = np.concatenate(val_weights, axis=0)
-        val_br, val_threshold = compute_br(val_labels, val_preds, val_weights, target_eff=target_eff)
 
         avg_train_loss = total_loss / num_batches if num_batches > 0 else 0.0
         avg_val_loss = val_loss / val_batches if val_batches > 0 else 0.0
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
-        history["train_br"].append(train_br)
-        history["val_br"].append(val_br)
 
-        logger.info(f"Epoch {epoch} - Train Loss: {avg_train_loss:.4f}, Train BR: {train_br:.4f} (Threshold: {train_threshold:.4f}), "
-              f"Val Loss: {avg_val_loss:.4f}, Val BR: {val_br:.4f} (Threshold: {val_threshold:.4f}), "
-              f"Train Samples: {total_samples}, Val Samples: {val_samples}")
+        logger.info(f"Epoch {epoch} - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
