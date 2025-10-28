@@ -70,7 +70,7 @@ if __name__ == "__main__":
     logger = get_logger("bnn_evaluation")
 
     n_samples = 10
-    max_jets = 100_000
+    max_jets = None
     max_constits = 80
     batch_size = 1_000
     device = get_device()
