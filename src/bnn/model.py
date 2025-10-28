@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class BNN(nn.Module):
-    def __init__(self, input_dim, hidden_layers=[1024, 1024, 1024, 1024, 1024], p=0.1):
+    def __init__(self, input_dim, hidden_layers=[400, 400, 400, 400], p=0.1):
 
         super(BNN, self).__init__()
 
