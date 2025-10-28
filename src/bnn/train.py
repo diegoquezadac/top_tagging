@@ -170,7 +170,7 @@ if __name__ == "__main__":
         plt.plot(history["val_loss"], label="Validation")
         plt.ylabel("Cross-entropy Loss")
         plt.xlabel("Training Epoch")
-        plt.ylim(0, 1)
+        #plt.ylim(0, 1)
         plt.legend()
         plt.grid(True)
         figure_dir = Path.cwd() / "figures"
