@@ -1,7 +1,7 @@
 import torch
 import logging
 import numpy as np
-from sklearn.metrics import roc_curve, accuracy_score, recall_score, precision_score
+from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score, recall_score, precision_score
 
 def train_loop(model, loader, criterion, optimizer, device, l1_lambda=None):
     model.train()
@@ -84,27 +84,28 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def get_metrics(y_true, y_pred, tpr_threshold=0.5):
-    # Find threshold that achieves the desired TPR
+
+    try:
+        auc = roc_auc_score(y_true, y_pred)
+    except ValueError:
+        auc = float('nan')
+
     fpr, tpr, thresholds = roc_curve(y_true, y_pred)
-    # Find the closest TPR to the desired threshold
     idx = np.argmin(np.abs(tpr - tpr_threshold))
     threshold = thresholds[idx]
     actual_tpr = tpr[idx]
     actual_fpr = fpr[idx]
 
-    # Convert probabilities to binary predictions using the threshold
     y_pred_binary = (y_pred >= threshold).astype(int)
 
-    # Calculate metrics
     accuracy = accuracy_score(y_true, y_pred_binary)
     recall = recall_score(y_true, y_pred_binary)
     precision = precision_score(y_true, y_pred_binary, zero_division=0)
-
-    # Handle 1/FPR
     inverse_fpr = 1.0 / actual_fpr if actual_fpr > 0 else float("inf")
 
     return {
         "accuracy": accuracy,
+        "auc": auc,
         "recall": recall,
         "precision": precision,
         "tpr": actual_tpr,
