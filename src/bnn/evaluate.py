@@ -5,14 +5,12 @@ import argparse
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import torch
-import numpy as np
 import pandas as pd
 import torch.nn as nn
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader
-from src.utils import get_device, get_logger
-from sklearn.metrics import roc_curve, accuracy_score, recall_score, precision_score
+from src.utils import get_device, get_logger, get_metrics
 
 
 def load_model(path_to_checkpoint, input_dim, device):
@@ -33,37 +31,6 @@ def predict(model, x, n_samples=50):
         preds = torch.stack([model(x) for _ in range(n_samples)])
         preds = torch.sigmoid(preds)
     return preds.mean(0), preds.var(0)
-
-
-def get_metrics(y_true, y_pred, tpr_threshold=0.5):
-    # Find threshold that achieves the desired TPR
-    fpr, tpr, thresholds = roc_curve(y_true, y_pred)
-    # Find the closest TPR to the desired threshold
-    idx = np.argmin(np.abs(tpr - tpr_threshold))
-    threshold = thresholds[idx]
-    actual_tpr = tpr[idx]
-    actual_fpr = fpr[idx]
-
-    # Convert probabilities to binary predictions using the threshold
-    y_pred_binary = (y_pred >= threshold).astype(int)
-
-    # Calculate metrics
-    accuracy = accuracy_score(y_true, y_pred_binary)
-    recall = recall_score(y_true, y_pred_binary)
-    precision = precision_score(y_true, y_pred_binary, zero_division=0)
-
-    # Handle 1/FPR
-    inverse_fpr = 1.0 / actual_fpr if actual_fpr > 0 else float("inf")
-
-    return {
-        "accuracy": accuracy,
-        "recall": recall,
-        "precision": precision,
-        "tpr": actual_tpr,
-        "fpr": actual_fpr,
-        "inverse_fpr": inverse_fpr,
-        "threshold": threshold,
-    }
 
 
 if __name__ == "__main__":
