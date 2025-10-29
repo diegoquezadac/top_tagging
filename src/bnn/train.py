@@ -8,6 +8,7 @@ import torch
 import random
 import numpy as np
 import torch.nn as nn
+from tqdm import tqdm
 from pathlib import Path
 import torch.optim as optim
 import matplotlib.pyplot as plt
@@ -129,7 +130,8 @@ if __name__ == "__main__":
 
     logger.info("Starting epochs")
 
-    for epoch in range(1, epochs + 1):
+    pbar = tqdm(range(1, epochs + 1), desc="Training", unit="epoch")
+    for epoch in pbar:
         train_loss = train_loop(
             model, train_loader, criterion, optimizer, device, l1_lambda=l1_lambda
         )
@@ -140,9 +142,17 @@ if __name__ == "__main__":
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        # print progress
-        logger.info(
-            f"Epoch {epoch}/{epochs} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f} - Val Acc: {val_acc:.4f}"
+        tqdm.postfix = {
+            "train_loss": f"{train_loss:.4f}",
+            "val_loss": f"{val_loss:.4f}",
+            "val_acc": f"{val_acc:.4f}",
+        }
+
+        tqdm.write(
+            f"epoch {epoch}/{epochs} | "
+            f"train_loss: {train_loss:.4f} | "
+            f"val_loss: {val_loss:.4f} | "
+            f"val_acc: {val_acc:.4f} | "
         )
 
         # save checkpoint if best
@@ -163,7 +173,7 @@ if __name__ == "__main__":
                 },
                 checkpoint_path,
             )
-            logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
+            pbar.write(f"Saved checkpoint: {checkpoint_path}")
 
         # --- Plot training curves ---
         plt.plot(history["train_loss"], label="Training")

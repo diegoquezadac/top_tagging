@@ -9,6 +9,7 @@ import random
 import numpy as np
 import torch.nn as nn
 from pathlib import Path
+from tqdm import tqdm
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from src.resnet50.dataset import ImageDataset
@@ -80,14 +81,14 @@ if __name__ == "__main__":
     )
 
     device = get_device()
-    model = ResNet(Bottleneck, [3, 4, 6, 3], dropout_p=dropout_p) # , num_classes=2)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], dropout_p=dropout_p)
     logger.info(f"Total trainable parameters: {count_parameters(model)}")
     model.to(device)
 
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
-    #scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.9 ** (epoch // 10))
+    # scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.9 ** (epoch // 10))
 
     checkpoint_dir = Path.cwd() / "checkpoints/resnet50"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -106,7 +107,9 @@ if __name__ == "__main__":
             )
             model.load_state_dict(checkpoint["model_state"])
             optimizer.load_state_dict(checkpoint["optimizer_state"])
-            scheduler.load_state_dict(checkpoint.get("scheduler_state", scheduler.state_dict()))
+            scheduler.load_state_dict(
+                checkpoint.get("scheduler_state", scheduler.state_dict())
+            )
             start_epoch = checkpoint["epoch"] + 1
             best_val_loss = checkpoint["val_loss"]
             history = checkpoint.get("history", history)
@@ -121,8 +124,9 @@ if __name__ == "__main__":
         else:
             logger.error(f"Checkpoint file {checkpoint_path} not found!")
             sys.exit(1)
-
-    for epoch in range(1, epochs + 1):
+    
+    pbar = tqdm(range(1, epochs + 1), desc="Training", unit="epoch")
+    for epoch in tqdm(range(1, epochs + 1), desc="Training", unit="epoch"):
         train_loss = train_loop(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = test_loop(model, val_loader, criterion, device)
         scheduler.step()
@@ -132,13 +136,19 @@ if __name__ == "__main__":
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        # print progress
-        logger.info(
-            f"Epoch {epoch}/{epochs} - "
-            f"Train Loss: {train_loss:.4f} - "
-            f"Val Loss: {val_loss:.4f} - "
-            f"Val Acc: {val_acc:.4f} - "
-            f"Learning Rate: {scheduler.get_last_lr()[0]:.6f}"
+        tqdm.postfix = {
+            "train_loss": f"{train_loss:.4f}",
+            "val_loss": f"{val_loss:.4f}",
+            "val_acc": f"{val_acc:.4f}",
+            "lr": f"{scheduler.get_last_lr()[0]:.2e}",
+        }
+
+        tqdm.write(
+            f"epoch {epoch}/{epochs} | "
+            f"train_loss: {train_loss:.4f} | "
+            f"val_loss: {val_loss:.4f} | "
+            f"val_acc: {val_acc:.4f} | "
+            f"lr: {scheduler.get_last_lr()[0]:.6f}"
         )
 
         if val_loss < best_val_loss:
@@ -159,7 +169,7 @@ if __name__ == "__main__":
                 },
                 checkpoint_path,
             )
-            logger.info(f"✅ Saved checkpoint: {checkpoint_path}")
+            pbar.write(f"Saved checkpoint: {checkpoint_path}")
 
         # --- Plot training curves ---
         plt.plot(history["train_loss"], label="Training")
