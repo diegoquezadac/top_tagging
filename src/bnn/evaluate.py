@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 import torch
 import pandas as pd
 import torch.nn as nn
+from tqdm import tqdm
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader
@@ -64,12 +65,10 @@ if __name__ == "__main__":
         prefetch_factor=2,
     )
 
-    model = load_weights(BNN(input_dim), args.model_checkpoint, input_dim, device=device)
+    model = load_weights(BNN(input_dim), args.model_checkpoint, device=device)
 
     means, vars_, targets = [], [], []
-    for idx, batch in enumerate(loader):
-        logger.info(f"Processing batch {idx}")
-        x, y = batch[0], batch[1]
+    for x, y in tqdm(loader, desc="Predicting"):
         x = x.to(device).view(x.size(0), -1)
         mean, var = predict(model, x, n_samples)
         means.append(mean.detach().cpu())
