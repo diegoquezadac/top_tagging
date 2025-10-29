@@ -10,17 +10,7 @@ import torch.nn as nn
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader
-from src.utils import get_device, get_logger, get_metrics
-
-
-def load_model(path_to_checkpoint, input_dim, device):
-    model = BNN(input_dim)
-    checkpoint = torch.load(path_to_checkpoint, map_location=device)
-    state = checkpoint["model_state"] if "model_state" in checkpoint else checkpoint
-    model.load_state_dict(state)
-    model.to(device)
-    return model
-
+from src.utils import get_device, get_logger, get_metrics, load_weights
 
 def predict(model, x, n_samples=50):
     model.train()
@@ -72,7 +62,7 @@ if __name__ == "__main__":
         prefetch_factor=2,
     )
 
-    model = load_model(args.model_checkpoint, input_dim, device=device)
+    model = load_weights(BNN(input_dim), args.model_checkpoint, input_dim, device=device)
 
     means, vars_, targets = [], [], []
     for idx, batch in enumerate(loader):

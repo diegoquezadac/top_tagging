@@ -112,3 +112,10 @@ def get_metrics(y_true, y_pred, tpr_threshold=0.5):
         "inverse_fpr": inverse_fpr,
         "threshold": threshold,
     }
+
+def load_weights(model, path_to_checkpoint, device):
+    checkpoint = torch.load(path_to_checkpoint, map_location=device)
+    state = checkpoint["model_state"] if "model_state" in checkpoint else checkpoint
+    model.load_state_dict(state)
+    model.to(device)
+    return model
