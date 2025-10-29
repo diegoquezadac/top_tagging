@@ -49,7 +49,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    dataset = TabularDataset(args.dataset_file, max_jets=max_jets)
+    dataset = TabularDataset(
+        args.dataset_file, max_jets=max_jets, use_train_weights=False
+    )
     x0, y0, *_ = dataset[0]
     input_dim = x0.numel()
     loader = DataLoader(
