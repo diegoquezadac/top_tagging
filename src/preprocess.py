@@ -144,6 +144,12 @@ def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use
 
             features_ds = output_file.create_dataset('features', shape=(num_samples, max_constits, 7), dtype=np.float32)
             labels_ds = output_file.create_dataset('labels', shape=(num_samples,), dtype=input_file['labels'].dtype)
+            fjet_pt_ds = output_file.create_dataset(
+                    'fjet_pt',
+                    shape=(num_samples,),
+                    dtype=np.float32,
+                )
+
             if use_train_weights:
                 weights_ds = output_file.create_dataset('weights', shape=(num_samples,), dtype=input_file['weights'].dtype)
             # nbins = 64  # From build_jet_images
@@ -164,6 +170,9 @@ def preprocess(input_path, output_path, max_constits=80, batch_size=100_000, use
                 labels_ds[start:end] = input_file['labels'][start:end]
                 if use_train_weights:
                     weights_ds[start:end] = input_file['weights'][start:end]
+
+                fjet_pt_ds[start:end] = input_file['fjet_pt'][start:end]
+                print(input_file['fjet_pt'][start:end])
                 # images = build_jet_images(processed_data)
                 # images_ds[start:end] = images
 
