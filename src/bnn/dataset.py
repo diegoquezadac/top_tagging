@@ -9,10 +9,12 @@ class TabularDataset(Dataset):
         max_jets: int = None,
         max_constits: int = 80,
         use_train_weights: bool = True,
+        use_jet_pt: bool = False,
     ):
         self.file_path = file_path
         self.max_constits = max_constits
         self.use_train_weights = use_train_weights
+        self.use_jet_pt = use_jet_pt
 
         with h5py.File(file_path, "r") as f:
             self.num_samples = len(f["labels"])
@@ -42,6 +44,13 @@ class TabularDataset(Dataset):
                 torch.tensor(features, dtype=torch.float32),
                 torch.tensor(label, dtype=torch.float32),
                 torch.tensor(weight, dtype=torch.float32),
+            )
+        elif self.use_jet_pt:
+            pts = f["fjet_pt"][idx]
+            return (
+                torch.tensor(features, dtype=torch.float32),
+                torch.tensor(label, dtype=torch.float32),
+                torch.tensor(pts, dtype=torch.float32),
             )
         else:
             return (
