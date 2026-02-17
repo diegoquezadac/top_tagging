@@ -17,15 +17,13 @@ uv add tensorflow-metal
 uv add tensorflow[and-cuda]
 ```
 
-### Using pip (alternative)
+### Using pip
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
-
-Additionally, considering the available hardware either install tensorflow-metal or tensorflow gpu:
 
 ```bash
 pip install tensorflow-metal
