@@ -2,7 +2,7 @@
 
 ## Python environment
 
-Run the following commands:
+### Using uv
 
 ```bash
 uv venv
@@ -14,23 +14,55 @@ Additionally, considering the available hardware either install tensorflow-metal
 
 ```bash
 uv add tensorflow-metal
+uv add tensorflow[and-cuda]
+```
+
+### Using pip (alternative)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+Additionally, considering the available hardware either install tensorflow-metal or tensorflow gpu:
+
+```bash
+pip install tensorflow-metal
+pip install tensorflow[and-cuda]
 ```
 
 ## Data gathering
 
-Download the datasets from [OpenData](https://opendata.cern.ch/record/15013).
+This project uses the [ATLAS Top Tagging Open Data](https://opendata.cern.ch/record/15013) from CERN OpenData. The datasets are HDF5 files containing jet constituents (up to 80 per jet) with four features each: transverse momentum (pt), pseudorapidity (eta), azimuthal angle (phi), and energy. Labels indicate whether a jet originates from a top quark or from background.
+
+| Dataset | [OpenData](https://opendata.cern.ch/record/15013) | tarron | euler |
+|---------|----------------------------------------------------|--------|-------|
+| `train-public.h5` | Yes | `/home/rafa/respaldoRaquel/train-public.h5` | `/mnt/storage/rpezoa/train-public.h5` |
+| `test-public.h5` | Yes | `/home/raquel/data/test-public.h5` | `/mnt/storage/rpezoa/test-public.h5` |
+| `raw_string.h5` | No | `/home/raquel/data/raw_string.h5` | `/mnt/storage/rpezoa/raw_string.h5` |
+| `raw_cluster.h5` | No | `/home/raquel/data/raw_cluster.h5` | `/mnt/storage/rpezoa/raw_cluster.h5` |
+| `raw_angular.h5` | No | `/home/raquel/data/raw_angular.h5` | `/mnt/storage/rpezoa/raw_angular.h5` |
+| `raw_dipole.h5` | No | `/home/raquel/data/raw_dipole.h5` | `/mnt/storage/rpezoa/raw_dipole.h5` |
 
 ## Data preprocessing
 
-Activate the python environment and run the following commands:
+The preprocessing follows the same logic described in the [original ATLAS implementation](https://gitlab.cern.ch/atlas/ATLAS-top-tagging-open-data/-/blob/master/utils.py?ref_type=heads), but adapted to work in batches (default size: 100,000) so it can handle the large training dataset on machines with standard memory.
+
+You can run the preprocessing with:
+
+```bash
+python src/preprocess.py <input.h5> <output.h5>
+```
+
+For example:
 
 ```bash
 python src/preprocess.py data/train-public.h5 data/train-preprocessed.h5
-
 python src/preprocess.py data/test-public.h5 data/test-preprocessed.h5
 ```
 
-> Notice that the structure is src/preprocess.py path_to_input_data path_to_output_data
+> In the original implementation, `lognorm_pt` and `lognorm_energy` require loading the entire column at once. In our version, the `compute_stats` function pre-computes the global sums needed for these features, enabling batch processing.
 
 ## Training
 
