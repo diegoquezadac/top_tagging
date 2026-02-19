@@ -49,7 +49,9 @@ if __name__ == "__main__":
     num_epochs = 30
     val_split = 0.1
     target_eff = 0.8
-    max_jets = 4000000
+    # NOTE: max_jets avoids training on the full dataset by considering only the first max_jets jets
+    # NOTE: set it to None to disable it
+    max_jets = 100_000
     max_constits = 80
     checkpoint_dir = Path("checkpoints/particle_net")
     checkpoint_path = checkpoint_dir

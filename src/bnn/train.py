@@ -33,6 +33,8 @@ if __name__ == "__main__":
     val_split = 0.1
     l1_lambda = 2e-4
 
+    # NOTE: max_jets avoids training on the full dataset by considering only the first max_jets jets
+    # NOTE: set it to None to disable it
     max_jets = 100_000
     max_constits = 80
 

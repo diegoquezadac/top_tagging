@@ -32,11 +32,11 @@ if __name__ == "__main__":
     batch_size = 256
     dropout_p = 0.5
     val_split = 0.1
-
-    max_jets = 4000000
+    # NOTE: max_jets avoids training on the full dataset by considering only the first max_jets jets
+    # NOTE: set it to None to disable it
+    max_jets = 100_000
     max_constits = 80
     num_workers = 10
-
 
     parser = argparse.ArgumentParser(description="ResNet50 model training")
     parser.add_argument(
