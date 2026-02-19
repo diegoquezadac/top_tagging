@@ -60,22 +60,37 @@ python src/preprocess.py data/train-public.h5 data/train-preprocessed.h5
 python src/preprocess.py data/test-public.h5 data/test-preprocessed.h5
 ```
 
-> In the original implementation, `lognorm_pt` and `lognorm_energy` require loading the entire column at once. In our version, the `compute_stats` function pre-computes the global sums needed for these features, enabling batch processing.
+> In [ATLAS Top Tagging Open Data](https://gitlab.cern.ch/atlas/ATLAS-top-tagging-open-data), the variables `lognorm_pt` and `lognorm_energy` require loading the entire column at once. In this version, the `compute_stats` function pre-computes the global sums needed for these features, enabling batch processing.
+
+## Models
+
+Three models are implemented, each with a different approach to represent jet data. For each model, four Python files are provided: `dataset.py`, `model.py`, `train.py`, and `evaluate.py`.
+
+* **BNN**: Bayesian Neural Network (PyTorch). Flattened input (80 constituents x 7 features) through 5 fully connected layers with batch normalization, ReLU, and dropout. Follows the DNN architecture from the Appendix A of *Constituent-Based Top-Quark Tagging with the ATLAS Detector* (2022). Uses Monte Carlo dropout at inference for uncertainty estimation.
+* **ResNet50**: Residual network (PyTorch). Jet constituents are binned into 64x64 pT-weighted images in eta-phi space. Uses a Bottleneck-based ResNet50 with layers [3, 4, 6, 3] starting from 16 initial planes.
+* **ParticleNet**: Graph neural network (Keras/TensorFlow). Operates on the point cloud of constituents using k-nearest neighbor graphs (k=18) with 3 EdgeConv blocks, following the [official implementation](https://github.com/hqucms/ParticleNet/blob/master/tf-keras/tf_keras_model.py).
 
 ## Training
 
-Activate the python environment and run the following command:
+All models are trained using the Adam optimizer and a cross-entropy loss function, with a 90/10 train/validation split. The best model (lowest validation loss) is saved automatically, and training curves are written to `figures/`.
 
 ```bash
-python src/bnn/train.py data/train-preprocessed.h5
+python src/bnn/train.py ./data/train-preprocessed.h5
+python src/resnet50/train.py ./data/train-preprocessed.h5
+python src/particle_net/train.py ./data/train-preprocessed.h5
 ```
 
-If you want to resume the training process from the current best model, simply run:
+To resume training from the last best checkpoint, add the `--resume` flag:
 
 ```bash
-python src/bnn/train.py data/train-preprocessed.h5 --resume
+python src/<model>/train.py ./data/train-preprocessed.h5 --resume
 ```
-
-> The BNN model is used as example, for resnet50 and particlenet the command is analogous.
 
 ## Evaluation
+
+Evaluation is performed on a test subset of 10,000 jets. The following metrics are computed at two signal efficiency working points (TPR=0.5 and TPR=0.8): accuracy, AUC, recall, precision, TPR, FPR, and background rejection (1/FPR). For the BNN, evaluation uses Monte Carlo dropout with 10 stochastic forward passes to produce mean predictions and uncertainty estimates.
+
+```bash
+python src/bnn/evaluate.py ./checkpoints/bnn/best_model.pt ./data/test-preprocessed.h5
+python src/resnet50/evaluate.py ./checkpoints/resnet50/best_model.pt ./data/test-preprocessed.h5
+```
