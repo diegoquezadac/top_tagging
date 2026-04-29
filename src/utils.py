@@ -1,6 +1,7 @@
 import torch
 import logging
 import numpy as np
+from tqdm import tqdm
 from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score, recall_score, precision_score
 
 def train_loop(model, loader, criterion, optimizer, device, l1_lambda=None):
@@ -8,7 +9,7 @@ def train_loop(model, loader, criterion, optimizer, device, l1_lambda=None):
     running_loss = 0.0
     total_samples = 0
 
-    for X, y, w in loader:
+    for X, y, w in tqdm(loader, desc="  train", leave=False, unit="batch", total=len(loader)):
         X, y, w = X.to(device), y.to(device).float(), w.to(device).float()
         optimizer.zero_grad()
 
@@ -39,7 +40,7 @@ def test_loop(model, loader, criterion, device):
     total_samples = 0
 
     with torch.no_grad():
-        for X, y, w in loader:                           # even if weights unused
+        for X, y, w in tqdm(loader, desc="  val  ", leave=False, unit="batch", total=len(loader)):
             X, y = X.to(device), y.to(device).float()
             outputs = model(X).squeeze(1)
 

@@ -126,7 +126,7 @@ if __name__ == "__main__":
             sys.exit(1)
     
     pbar = tqdm(range(1, epochs + 1), desc="Training", unit="epoch")
-    for epoch in tqdm(range(1, epochs + 1), desc="Training", unit="epoch"):
+    for epoch in pbar:
         train_loss = train_loop(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = test_loop(model, val_loader, criterion, device)
         scheduler.step()
@@ -136,12 +136,12 @@ if __name__ == "__main__":
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        tqdm.postfix = {
-            "train_loss": f"{train_loss:.4f}",
-            "val_loss": f"{val_loss:.4f}",
-            "val_acc": f"{val_acc:.4f}",
-            "lr": f"{scheduler.get_last_lr()[0]:.2e}",
-        }
+        pbar.set_postfix(
+            train_loss=f"{train_loss:.4f}",
+            val_loss=f"{val_loss:.4f}",
+            val_acc=f"{val_acc:.4f}",
+            lr=f"{scheduler.get_last_lr()[0]:.2e}",
+        )
 
         tqdm.write(
             f"epoch {epoch}/{epochs} | "

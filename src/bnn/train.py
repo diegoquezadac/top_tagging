@@ -89,7 +89,14 @@ if __name__ == "__main__":
 
     logger.info("Preparing training")
     n_features = max_constits * 7
-    model = BNN(n_features)
+    
+    params = [
+        (n_features, [400, 400, 400, 400, 400], 0.1),
+        (n_features, [400, 400, 400, 400, 400], 0.2),
+        (n_features, [400, 400, 400, 400, 400], 0.3),
+    ]
+
+    model = BNN(n_features, p=0.1)
     logger.info(f"Total trainable parameters: {count_parameters(model)}")
 
     device = get_device()
@@ -144,11 +151,11 @@ if __name__ == "__main__":
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        tqdm.postfix = {
-            "train_loss": f"{train_loss:.4f}",
-            "val_loss": f"{val_loss:.4f}",
-            "val_acc": f"{val_acc:.4f}",
-        }
+        pbar.set_postfix(
+            train_loss=f"{train_loss:.4f}",
+            val_loss=f"{val_loss:.4f}",
+            val_acc=f"{val_acc:.4f}",
+        )
 
         tqdm.write(
             f"epoch {epoch}/{epochs} | "

@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from src.particle_net.dataset import PointDataset, create_data_loader
@@ -107,10 +108,12 @@ if __name__ == "__main__":
         logger.info(f"Error: Checkpoint file {checkpoint_path} not found!")
         sys.exit(1)
 
-    for epoch in range(start_epoch, num_epochs + 1):
-        logger.info(f"Epoch {epoch}/{num_epochs}")
+    train_batches = (train_size + batch_size - 1) // batch_size
+    val_batches_total = (val_size + batch_size - 1) // batch_size
+
+    epoch_pbar = tqdm(range(start_epoch, num_epochs + 1), desc="Training", unit="epoch")
+    for epoch in epoch_pbar:
         optimizer.learning_rate.assign(lr_schedule(epoch))
-        logger.info(f"Learning rate: {optimizer.learning_rate.numpy():.6f}")
 
         total_loss = 0.0
         num_batches = 0
@@ -119,7 +122,7 @@ if __name__ == "__main__":
         train_preds = []
         train_weights = []
 
-        for batch in train_loader:
+        for batch in tqdm(train_loader, desc="  train", leave=False, unit="batch", total=train_batches):
             inputs, labels, weights = batch
             batch_size_actual = tf.shape(labels)[0].numpy()
             total_samples += batch_size_actual
@@ -137,9 +140,6 @@ if __name__ == "__main__":
             total_loss += loss.numpy()
             num_batches += 1
 
-            if (num_batches + 1) % 10 == 0:
-                logger.info(f"Batch {num_batches + 1}, Loss: {loss.numpy():.4f}")
-
         train_labels = np.concatenate(train_labels, axis=0)
         train_preds = np.concatenate(train_preds, axis=0)
         train_weights = np.concatenate(train_weights, axis=0)
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         val_preds = []
         val_weights = []
 
-        for batch in val_loader:
+        for batch in tqdm(val_loader, desc="  val  ", leave=False, unit="batch", total=val_batches_total):
             inputs, labels, weights = batch
             batch_size_actual = tf.shape(labels)[0].numpy()
             val_samples += batch_size_actual
@@ -178,7 +178,17 @@ if __name__ == "__main__":
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
 
-        logger.info(f"Epoch {epoch} - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+        epoch_pbar.set_postfix(
+            train_loss=f"{avg_train_loss:.4f}",
+            val_loss=f"{avg_val_loss:.4f}",
+            lr=f"{optimizer.learning_rate.numpy():.2e}",
+        )
+        tqdm.write(
+            f"epoch {epoch}/{num_epochs} | "
+            f"train_loss: {avg_train_loss:.4f} | "
+            f"val_loss: {avg_val_loss:.4f} | "
+            f"lr: {optimizer.learning_rate.numpy():.6f}"
+        )
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -194,7 +204,7 @@ if __name__ == "__main__":
                 input_path=args.input_path,
                 lr=optimizer.learning_rate.numpy()
             )
-            logger.info(f"Saved checkpoint with Val Loss: {best_val_loss:.4f}")
+            tqdm.write(f"Saved checkpoint with Val Loss: {best_val_loss:.4f}")
 
         # Plot loss curves
         plt.plot(history["train_loss"], label="Training")
