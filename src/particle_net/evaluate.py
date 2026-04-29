@@ -4,13 +4,15 @@ import argparse
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+import h5py
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tqdm import tqdm
+from pathlib import Path
 from src.particle_net.dataset import PointDataset, create_data_loader
 from src.particle_net.model import get_particle_net
-from src.utils import get_logger, get_metrics
+from src.utils import get_logger, get_metrics, plot_rejection_vs_variable
 
 
 def load_model(path_to_checkpoint, num_classes=2, max_constits=80, num_features=7):
@@ -92,3 +94,24 @@ if __name__ == "__main__":
     logger.info("\nMetrics at TPR=0.8:")
     for metric, value in metrics_tpr_08.items():
         logger.info(f"{metric}: {value:.4f}")
+
+    figures_dir = Path("figures") / "particle_net"
+    y_pred_flat = preds_all[:, 0].flatten()
+    y_true_flat = targets_all[:, 0].flatten()
+    n_jets = len(y_true_flat)
+
+    with h5py.File(args.dataset_file, "r") as f:
+        fjet_pt    = f["fjet_pt"][:n_jets] * 1e-3
+        fjet_m     = f["fjet_m"][:n_jets] * 1e-3
+        fjet_eta   = f["fjet_eta"][:n_jets]
+        n_constits = f["n_constits"][:n_jets]
+
+    for vals, fname, xlabel in [
+        (fjet_pt,    "rejection_vs_pt.png",           r"Jet $p_T$ [GeV]"),
+        (fjet_m,     "rejection_vs_mass.png",          r"Jet mass [GeV]"),
+        (fjet_eta,   "rejection_vs_eta.png",            r"Jet $\eta$"),
+        (n_constits, "rejection_vs_multiplicity.png",  "Constituent multiplicity"),
+    ]:
+        plot_rejection_vs_variable(y_pred_flat, y_true_flat, vals,
+            xlabel=xlabel, out_path=figures_dir / fname)
+        logger.info(f"Saved {fname}")

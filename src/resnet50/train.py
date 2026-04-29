@@ -11,11 +11,10 @@ import torch.nn as nn
 from pathlib import Path
 from tqdm import tqdm
 import torch.optim as optim
-import matplotlib.pyplot as plt
 from src.resnet50.dataset import ImageDataset
 from src.resnet50.model import ResNet, Bottleneck
 from torch.utils.data import DataLoader, random_split
-from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters
+from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters, plot_loss_curve
 from torch.optim.lr_scheduler import StepLR, LambdaLR
 
 SEED = 21
@@ -171,13 +170,4 @@ if __name__ == "__main__":
             )
             pbar.write(f"Saved checkpoint: {checkpoint_path}")
 
-        # --- Plot training curves ---
-        plt.plot(history["train_loss"], label="Training")
-        plt.plot(history["val_loss"], label="Validation")
-        plt.ylabel("Cross-entropy Loss")
-        plt.xlabel("Training Epoch")
-        plt.legend()
-        figure_dir = Path.cwd() / "figures"
-        figure_dir.mkdir(parents=True, exist_ok=True)
-        plt.savefig(figure_dir / "loss_resnet50.png", dpi=300)
-        plt.clf()
+        plot_loss_curve(history, Path.cwd() / "figures" / "resnet50" / "loss.png", title="ResNet50")

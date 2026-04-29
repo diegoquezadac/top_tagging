@@ -3,14 +3,13 @@ import os
 import argparse
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from src.particle_net.dataset import PointDataset, create_data_loader
 from src.particle_net.model import get_particle_net
-from src.utils import get_logger
+from src.utils import get_logger, plot_loss_curve
 
 logger = get_logger("particle-net_training")
 
@@ -206,14 +205,4 @@ if __name__ == "__main__":
             )
             tqdm.write(f"Saved checkpoint with Val Loss: {best_val_loss:.4f}")
 
-        # Plot loss curves
-        plt.plot(history["train_loss"], label="Training")
-        plt.plot(history["val_loss"], label="Validation")
-        plt.ylabel("Cross-entropy Loss")
-        plt.xlabel("Training Epoch")
-        plt.ylim(0, 1)
-        plt.legend()
-        figure_dir = Path("figures")
-        figure_dir.mkdir(parents=True, exist_ok=True)
-        plt.savefig(figure_dir / "loss_particle_net.png", dpi=300)
-        plt.clf()
+        plot_loss_curve(history, Path("figures") / "particle_net" / "loss.png", title="ParticleNet")

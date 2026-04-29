@@ -11,11 +11,10 @@ import torch.nn as nn
 from tqdm import tqdm
 from pathlib import Path
 import torch.optim as optim
-import matplotlib.pyplot as plt
 from src.bnn.dataset import TabularDataset
 from src.bnn.model import BNN
 from torch.utils.data import DataLoader, random_split
-from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters
+from src.utils import train_loop, test_loop, get_device, get_logger, count_parameters, plot_loss_curve
 
 SEED = 21
 logger = get_logger("bnn_training")
@@ -27,15 +26,15 @@ torch.cuda.manual_seed_all(SEED)
 
 
 if __name__ == "__main__":
-    epochs = 100
-    lr = 1.2 * 1e-5
-    batch_size = 250
+    epochs = 1000
+    lr = 3e-4
+    batch_size = 512
     val_split = 0.1
-    l1_lambda = 2e-4
+    l1_lambda = 1e-4
 
     # NOTE: max_jets avoids training on the full dataset by considering only the first max_jets jets
     # NOTE: set it to None to disable it
-    max_jets = 100_000
+    max_jets = 500_000
     max_constits = 80
 
     parser = argparse.ArgumentParser(description="BNN model training")
@@ -96,7 +95,7 @@ if __name__ == "__main__":
         (n_features, [400, 400, 400, 400, 400], 0.3),
     ]
 
-    model = BNN(n_features, p=0.1)
+    model = BNN(n_features, p=0.2)
     logger.info(f"Total trainable parameters: {count_parameters(model)}")
 
     device = get_device()
@@ -109,6 +108,9 @@ if __name__ == "__main__":
     checkpoint_dir = Path.cwd() / "checkpoints/bnn"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = checkpoint_dir / "best_model.pt"
+
+    early_stopping_patience = 100
+    epochs_without_improvement = 0
 
     history = {"train_loss": [], "val_loss": [], "val_acc": []}
     best_val_loss = float("inf")
@@ -124,6 +126,7 @@ if __name__ == "__main__":
             optimizer.load_state_dict(checkpoint["optimizer_state"])
             start_epoch = checkpoint["epoch"] + 1
             best_val_loss = checkpoint["val_loss"]
+            epochs_without_improvement = 0
             history = checkpoint.get("history", history)
             if (
                 checkpoint["max_constits"] != max_constits
@@ -167,6 +170,7 @@ if __name__ == "__main__":
         # save checkpoint if best
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            epochs_without_improvement = 0
             checkpoint_path = checkpoint_dir / "best_model.pt"
             torch.save(
                 {
@@ -175,24 +179,18 @@ if __name__ == "__main__":
                     "optimizer_state": optimizer.state_dict(),
                     "val_loss": val_loss,
                     "history": history,
-                    "max_constits": max_constits,  # Save dataset parameters
+                    "max_constits": max_constits,
                     "val_split": val_split,
                     "input_path": args.input_path,
-                    "lr": optimizer.param_groups[0]["lr"],  # Save current learning rate
+                    "lr": optimizer.param_groups[0]["lr"],
                 },
                 checkpoint_path,
             )
             pbar.write(f"Saved checkpoint: {checkpoint_path}")
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= early_stopping_patience:
+                tqdm.write(f"Early stopping at epoch {epoch} (no improvement for {early_stopping_patience} epochs)")
+                break
 
-        # --- Plot training curves ---
-        plt.plot(history["train_loss"], label="Training")
-        plt.plot(history["val_loss"], label="Validation")
-        plt.ylabel("Cross-entropy Loss")
-        plt.xlabel("Training Epoch")
-        #plt.ylim(0, 1)
-        plt.legend()
-        plt.grid(True)
-        figure_dir = Path.cwd() / "figures"
-        figure_dir.mkdir(parents=True, exist_ok=True)
-        plt.savefig(figure_dir / "loss_bnn.png", dpi=300)
-        plt.clf()
+        plot_loss_curve(history, Path.cwd() / "figures" / "bnn" / "loss.png", title="BNN")
