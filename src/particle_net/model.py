@@ -184,10 +184,10 @@ def _particle_net_base(points, features=None, setting=None, name="particle_net")
             x = pool
             for layer_idx, layer_param in enumerate(setting.fc_params):
                 units, drop_rate = layer_param
-                x = keras.layers.Dense(units, activation="relu")(x)
+                x = keras.layers.Dense(units, activation="relu", kernel_initializer="glorot_normal")(x)
                 if drop_rate is not None and drop_rate > 0:
                     x = keras.layers.Dropout(drop_rate)(x)
-            out = keras.layers.Dense(setting.num_class, activation="softmax")(x)
+            out = keras.layers.Dense(setting.num_class, activation="softmax", kernel_initializer="glorot_normal")(x)
             return out  # (N, num_classes)
         else:
             return pool

@@ -27,10 +27,10 @@ torch.cuda.manual_seed_all(SEED)
 
 if __name__ == "__main__":
     epochs = 1000
-    lr = 3e-4
-    batch_size = 512
+    lr = 1.2e-5
+    batch_size = 250
     val_split = 0.1
-    l1_lambda = 1e-4
+    l1_lambda = 2e-4
 
     # NOTE: max_jets avoids training on the full dataset by considering only the first max_jets jets
     # NOTE: set it to None to disable it
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         (n_features, [400, 400, 400, 400, 400], 0.3),
     ]
 
-    model = BNN(n_features, p=0.2)
+    model = BNN(n_features, p=0.4)
     logger.info(f"Total trainable parameters: {count_parameters(model)}")
 
     device = get_device()

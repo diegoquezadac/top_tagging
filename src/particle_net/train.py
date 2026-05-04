@@ -14,12 +14,7 @@ from src.utils import get_logger, plot_loss_curve
 logger = get_logger("particle-net_training")
 
 def lr_schedule(epoch):
-    lr = 4.2e-4
-    if epoch > 20:
-        lr *= 0.01
-    elif epoch > 10:
-        lr *= 0.1
-    return lr
+    return 4.2e-4
 
 class WeightedCategoricalCrossentropy(tf.keras.losses.Loss):
     def __init__(self, name="weighted_categorical_crossentropy"):
@@ -45,7 +40,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    batch_size = 64
+    batch_size = 250
     num_epochs = 30
     val_split = 0.1
     target_eff = 0.8
