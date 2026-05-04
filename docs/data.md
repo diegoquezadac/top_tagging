@@ -26,12 +26,13 @@ Each jet contains three groups of variables:
 
 2. **Constituent four-vectors** — up to 200 constituents per jet, sorted by pt descending and zero-padded:
 
-   | Variable | Description |
-   |----------|-------------|
-   | `fjet_clus_eta` | Pseudorapidity |
-   | `fjet_clus_phi` | Azimuthal angle |
-   | `fjet_clus_pt` | Transverse momentum |
-   | `fjet_clus_E` | Energy |
+   | Variable | Description | Datasets |
+   |----------|-------------|----------|
+   | `fjet_clus_eta` | Pseudorapidity | all |
+   | `fjet_clus_phi` | Azimuthal angle | all |
+   | `fjet_clus_pt` | Transverse momentum | all |
+   | `fjet_clus_E` | Energy | all |
+   | `fjet_clus_taste` | Cluster type flag (integer) | `raw_*.h5` only |
 
    The actual number of real constituents varies per jet (the rest are zeros). In practice only the leading **80** are used, and **3 derived features** are added during preprocessing, giving **7 features per constituent**.
 
